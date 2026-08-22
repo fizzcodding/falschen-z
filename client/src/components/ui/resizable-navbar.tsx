@@ -1,4 +1,7 @@
-/* Signal Forge navigation primitive: fixed positioning, 3px dark outline always, smooth scroll transitions. */
+/* Signal Forge navigation primitive: fixed positioning, 3px dark outline always, smooth scroll transitions.
+ * Uses width + y spring (critically damped, stiffness 280, damping 36) — no rubber bounce.
+ * backdrop-filter / boxShadow / backgroundColor all animated via framer-motion values.
+ */
 "use client";
 import { cn } from "@/lib/utils";
 import { IconMenu2, IconX } from "@tabler/icons-react";
@@ -9,6 +12,10 @@ import {
   useScroll,
 } from "motion/react";
 import React, { useRef, useState } from "react";
+
+/* ── Shared spring: critically damped — no overshoot at all ── */
+const NAV_SPRING = { type: "spring", stiffness: 280, damping: 36 } as const;
+const FAST_TWEEN = { type: "tween", duration: 0.28, ease: [0.23, 1, 0.32, 1] } as const;
 
 interface NavbarProps {
   children: React.ReactNode;
@@ -42,10 +49,7 @@ interface MobileNavMenuProps {
 
 export const Navbar = ({ children, className }: NavbarProps) => {
   const ref = useRef<HTMLDivElement>(null);
-  const { scrollY } = useScroll({
-    target: ref,
-    offset: ["start start", "end start"],
-  });
+  const { scrollY } = useScroll();
   const [visible, setVisible] = useState(false);
 
   useMotionValueEvent(scrollY, "change", (latest) => {
@@ -53,12 +57,9 @@ export const Navbar = ({ children, className }: NavbarProps) => {
   });
 
   return (
-    <motion.div
+    <div
       ref={ref}
-      className={cn(
-        "fixed inset-x-0 top-4 z-50 w-full px-4",
-        className,
-      )}
+      className={cn("fixed inset-x-0 top-4 z-50 w-full px-4", className)}
     >
       {React.Children.map(children, (child) =>
         React.isValidElement(child)
@@ -68,7 +69,7 @@ export const Navbar = ({ children, className }: NavbarProps) => {
             )
           : child,
       )}
-    </motion.div>
+    </div>
   );
 };
 
@@ -77,19 +78,29 @@ export const NavBody = ({ children, className, visible }: NavBodyProps) => {
     <motion.div
       initial={false}
       animate={{
+        width: visible ? "62%" : "100%",
+        y: visible ? 4 : 0,
         backgroundColor: visible
-          ? "rgba(246, 246, 246, 0.95)"
-          : "rgba(246, 246, 246, 0.98)",
-        maxWidth: visible ? "700px" : "100%",
+          ? "rgba(246,246,246,0.94)"
+          : "rgba(246,246,246,0.99)",
+        backdropFilter: visible ? "blur(14px)" : "blur(0px)",
+        boxShadow: visible
+          ? "0 6px 28px rgba(16,26,46,0.09), 0 1px 0 rgba(16,26,46,0.06)"
+          : "0 0 0 rgba(16,26,46,0)",
+        paddingTop: visible ? "8px" : "12px",
+        paddingBottom: visible ? "8px" : "12px",
       }}
       transition={{
-        type: "spring",
-        stiffness: 260,
-        damping: 28,
+        width: NAV_SPRING,
+        y: NAV_SPRING,
+        backgroundColor: FAST_TWEEN,
+        backdropFilter: FAST_TWEEN,
+        boxShadow: FAST_TWEEN,
+        paddingTop: NAV_SPRING,
+        paddingBottom: NAV_SPRING,
       }}
       className={cn(
-        "relative z-[60] mx-auto hidden w-full flex-row items-center justify-between rounded-none border-[3px] border-[#101A2E] px-5 py-3 lg:flex",
-        visible && "backdrop-blur-md shadow-[0_8px_32px_rgba(16,26,46,0.10)]",
+        "relative z-[60] mx-auto hidden w-full flex-row items-center justify-between border-[3px] border-[#101A2E] px-5 py-3 lg:flex",
         className,
       )}
     >
@@ -121,8 +132,13 @@ export const NavItems = ({ items, className, onItemClick }: NavItemsProps) => {
             <motion.span
               layoutId="nav-hover"
               className="absolute inset-0 -z-10 border border-[#101A2E] bg-[#8BFF6A]"
-              initial={false}
-              transition={{ type: "spring", stiffness: 400, damping: 30 }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{
+                opacity: { duration: 0.15, ease: "easeOut" },
+                layout: { type: "spring", stiffness: 380, damping: 36 },
+              }}
             />
           )}
           <span className="relative z-20">{item.name}</span>
@@ -132,28 +148,30 @@ export const NavItems = ({ items, className, onItemClick }: NavItemsProps) => {
   );
 };
 
-export const MobileNav = ({
-  children,
-  className,
-  visible,
-}: MobileNavProps) => {
+export const MobileNav = ({ children, className, visible }: MobileNavProps) => {
   return (
     <motion.div
       initial={false}
       animate={{
+        width: visible ? "88%" : "100%",
+        y: visible ? 4 : 0,
         backgroundColor: visible
-          ? "rgba(246, 246, 246, 0.98)"
-          : "rgba(246, 246, 246, 0.96)",
-        maxWidth: visible ? "85%" : "100%",
+          ? "rgba(246,246,246,0.96)"
+          : "rgba(246,246,246,0.99)",
+        backdropFilter: visible ? "blur(14px)" : "blur(0px)",
+        boxShadow: visible
+          ? "0 6px 28px rgba(16,26,46,0.09)"
+          : "0 0 0 rgba(16,26,46,0)",
       }}
       transition={{
-        type: "spring",
-        stiffness: 260,
-        damping: 28,
+        width: NAV_SPRING,
+        y: NAV_SPRING,
+        backgroundColor: FAST_TWEEN,
+        backdropFilter: FAST_TWEEN,
+        boxShadow: FAST_TWEEN,
       }}
       className={cn(
         "relative z-50 mx-auto flex w-full flex-col border-[3px] border-[#101A2E] px-3 py-2 lg:hidden",
-        visible && "backdrop-blur-md shadow-[0_8px_32px_rgba(16,26,46,0.10)]",
         className,
       )}
     >
@@ -162,35 +180,24 @@ export const MobileNav = ({
   );
 };
 
-export const MobileNavHeader = ({
-  children,
-  className,
-}: MobileNavHeaderProps) => {
+export const MobileNavHeader = ({ children, className }: MobileNavHeaderProps) => {
   return (
-    <div
-      className={cn(
-        "flex w-full flex-row items-center justify-between",
-        className,
-      )}
-    >
+    <div className={cn("flex w-full flex-row items-center justify-between", className)}>
       {children}
     </div>
   );
 };
 
-export const MobileNavMenu = ({
-  children,
-  className,
-  isOpen,
-}: MobileNavMenuProps) => {
+export const MobileNavMenu = ({ children, className, isOpen }: MobileNavMenuProps) => {
   return (
     <AnimatePresence>
       {isOpen && (
         <motion.div
-          initial={{ opacity: 0, y: -6 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -6 }}
-          transition={{ type: "spring", stiffness: 400, damping: 30 }}
+          initial={{ opacity: 0, y: -8, scaleY: 0.96 }}
+          animate={{ opacity: 1, y: 0, scaleY: 1 }}
+          exit={{ opacity: 0, y: -8, scaleY: 0.96 }}
+          transition={{ type: "spring", stiffness: 380, damping: 32 }}
+          style={{ transformOrigin: "top" }}
           className={cn(
             "absolute inset-x-[-3px] top-[calc(100%+3px)] flex flex-col gap-4 border-[3px] border-[#101A2E] bg-[#F6F6F6] p-4",
             className,
@@ -203,13 +210,7 @@ export const MobileNavMenu = ({
   );
 };
 
-export const MobileNavToggle = ({
-  isOpen,
-  onClick,
-}: {
-  isOpen: boolean;
-  onClick: () => void;
-}) => {
+export const MobileNavToggle = ({ isOpen, onClick }: { isOpen: boolean; onClick: () => void }) => {
   return (
     <button
       aria-label={isOpen ? "Close menu" : "Open menu"}
@@ -225,14 +226,10 @@ export const NavbarLogo = ({ logoUrl }: { logoUrl: string }) => {
   return (
     <a
       href="#top"
-      className="relative z-20 flex items-center flex-shrink-0"
+      className="relative z-20 flex flex-shrink-0 items-center"
       aria-label="Team Fälschen home"
     >
-      <img
-        src={logoUrl}
-        alt="Team Fälschen"
-        className="h-9 w-auto object-contain"
-      />
+      <img src={logoUrl} alt="Team Fälschen" className="h-12 w-auto object-contain" />
     </a>
   );
 };
@@ -256,9 +253,9 @@ export const NavbarButton = ({
       href={href || undefined}
       onClick={onClick}
       className={cn(
-        "mono inline-flex items-center justify-center border-[3px] border-[#101A2E] px-3 py-2 text-[10px] font-bold tracking-[.12em] transition-all duration-150 active:translate-y-[2px] active:scale-95 flex-shrink-0",
+        "mono inline-flex flex-shrink-0 items-center justify-center border-[3px] border-[#101A2E] px-3 py-2 text-[10px] font-bold tracking-[.12em] transition-all duration-150 active:translate-y-[2px] active:scale-95",
         variant === "primary"
-          ? "bg-[#101A2E] shadow-[4px_4px_0_#8BFF6A] hover:shadow-[5px_5px_0_#8BFF6A] hover:translate-x-[-1px] hover:translate-y-[-1px]"
+          ? "bg-[#101A2E] shadow-[4px_4px_0_#8BFF6A] hover:translate-x-[-1px] hover:translate-y-[-1px] hover:shadow-[5px_5px_0_#8BFF6A]"
           : "bg-transparent hover:bg-[#8BFF6A]",
         variant === "primary" ? "!text-[#F6F6F6]" : "!text-[#101A2E]",
         className,
