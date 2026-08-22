@@ -217,7 +217,7 @@ h1 span.h1-solid span { color: #101A2E; -webkit-text-stroke: 0; }
 .hero-glitch-bg { display: none; }
 .the_damn_team_Card { z-index: 2 !important; }
 /* Countdown section */
-.countdown-section { background: #101A2E; color: #F6F6F6; border-top: 3px solid #101A2E; position: relative; z-index: 2; }
+.countdown-section { background: #101A2E; color: #F6F6F6; border-top: 3px solid #101A2E; position: relative; }
 .countdown-inner { text-align: center; max-width: 800px; margin: 0 auto; }
 .countdown-eyebrow { color: #8BFF6A; margin-bottom: 24px; }
 .countdown-title { font: 800 clamp(2.5rem, 6vw, 5rem)/.9 "IBM Plex Mono", monospace; letter-spacing: -.08em; margin-bottom: 20px; }
